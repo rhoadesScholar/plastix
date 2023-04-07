@@ -1,52 +1,50 @@
+import jax.numpy as jnp
 import plastix as px
 import unittest
 
 
 class TestCompartment(unittest.TestCase):
-    def __test_creation(self):
-        #   0 - 2--
-        #    \ /    \
-        #     x      4
-        #    / \    /
-        #   1 - 3--
+    def test_and(self):
+        n = 2
+        m = 1
+        # dense layer as sparse layer
+        edges = [(0, 0), (1, 0)]
 
-        network = px.Network()
-        nodes = network.add_nodes(5)
-        edges = network.add_edges(
-            [
-                (nodes[0], nodes[2]),
-                (nodes[0], nodes[3]),
-                (nodes[1], nodes[2]),
-                (nodes[1], nodes[3]),
-                (nodes[2], nodes[4]),
-                (nodes[3], nodes[4]),
-            ]
+        layer = px.layers.SparseLayer(
+            n,
+            m,
+            edges,
+            px.kernels.edges.FixedWeight(),
+            px.kernels.nodes.CompartmentKernel(),
         )
 
-        for node in nodes:
-            node.set_kernel(px.kernels.nodes.SumNonlinear())
-        for edge in edges:
-            edge.set_kernel(px.kernels.edges.FixedWeight())
+        state = layer.init_state()
+        parameters = layer.init_parameters()
+        parameters.edges.weight *= 0.5
 
-        # initialize kernel parameters
-        nodes[0].bias = 0.0
-        nodes[1].bias = 0.0
-        nodes[2].bias = 0.5
-        nodes[3].bias = 1.5
-        nodes[4].bias = 0.0
-        edges[0].weight = 1.0
-        edges[1].weight = 1.0
-        edges[2].weight = 1.0
-        edges[3].weight = 1.0
-        edges[4].weight = 0.5
-        edges[5].weight = -0.5
+        # 0, 0 -> 0
 
-        # clamp input node values
-        nodes[0].rate = 0.0
-        nodes[1].rate = 0.0
+        state.input_nodes.rate = jnp.array([[0.0], [0.0]])
+        state = layer.update_state(state, parameters)
+        assert state.output_nodes.rate[0] == 0
 
-        # update nodes
-        network.tick()
+        # 0, 1 -> <0.5
 
-        # test output
-        assert nodes[4].rate < 0
+        state.input_nodes.rate = jnp.array([[0.0], [1.0]])
+        state = layer.update_state(state, parameters)
+        assert state.output_nodes.rate[0] < 0.5
+
+        # 1, 0 -> <0.5
+
+        state.input_nodes.rate = jnp.array([[1.0], [0.0]])
+        state = layer.update_state(state, parameters)
+        assert state.output_nodes.rate[0] < 0.5
+
+        # 1, 1 -> >0.5
+
+        state.input_nodes.rate = jnp.array([[1.0], [1.0]])
+        state = layer.update_state(state, parameters)
+        assert state.output_nodes.rate[0] > 0.5
+
+        state.output_nodes.dendritic_input = jnp.array([0, -1, 0, 1, 0, 0])
+        state = layer.update_state(state, parameters)

@@ -2,7 +2,7 @@ from ..attribute import Attribute
 
 
 class Parameter(Attribute):
-    '''Declaration class for kernel parameters.
+    """Declaration class for kernel parameters.
 
     To be used as class attributes in custom edge and node kernels.
 
@@ -19,12 +19,11 @@ class Parameter(Attribute):
 
         shared (bool):
 
-            Set to if this parameter is to be shared with other kernels that
+            Set to ``True`` if this parameter is to be shared with other kernels that
             declared it in the same way.
-    '''
+    """
 
     def __init__(self, shape, init_fun=None, shared=False):
-
         super().__init__(shape)
         self.init_fun = init_fun
         self.shared = shared

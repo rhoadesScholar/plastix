@@ -3,6 +3,7 @@ from jax.tree_util import register_pytree_node_class
 
 @register_pytree_node_class
 class LayerStates:
+    """A container for the states of a layer."""
 
     def __init__(self, input_nodes, output_nodes, edges):
         self.input_nodes = input_nodes
@@ -10,11 +11,7 @@ class LayerStates:
         self.edges = edges
 
     def tree_flatten(self):
-        children = (
-            self.input_nodes,
-            self.output_nodes,
-            self.edges
-        )
+        children = (self.input_nodes, self.output_nodes, self.edges)
         return (children, None)
 
     @classmethod
